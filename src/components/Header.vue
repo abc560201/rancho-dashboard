@@ -39,6 +39,10 @@ import {
   onMounted,
   onUnmounted
 } from "vue"
+import {
+  dailyWeatherForDate,
+  weatherIcon
+} from "../utils/weather"
 
 const props = defineProps({
   forecast:{
@@ -52,33 +56,20 @@ const date = ref("")
 
 let timer
 
-const todayWeather = computed(() => {
-
-  if(!props.forecast?.daily)
-    return null
-
-  const todayKey =
-    new Date().toLocaleDateString("sv-SE")
-  const index =
-    props.forecast.daily.time.findIndex(
-      day => day === todayKey
-    )
-
-  if(index === -1)
-    return null
-
-  return {
-    max:props.forecast.daily.temperature_2m_max[index],
-    min:props.forecast.daily.temperature_2m_min[index],
-    code:props.forecast.daily.weather_code[index]
-  }
-
-})
+const todayWeather = computed(() =>
+  dailyWeatherForDate(
+    props.forecast,
+    new Date()
+  )
+)
 
 const currentTemperature = computed(() => {
 
-  if(props.forecast?.current?.temperature_2m != null)
-    return Math.round(props.forecast.current.temperature_2m)
+  const current =
+    props.forecast?.current?.temperature_2m
+
+  if(Number.isFinite(current))
+    return Math.round(current)
 
   if(todayWeather.value)
     return Math.round(
@@ -103,27 +94,6 @@ function updateClock() {
     month: "long",
     year: "numeric"
   })
-}
-
-function weatherIcon(code){
-
-  if([0,1].includes(code))
-    return "☀️"
-
-  if([2,3].includes(code))
-    return "🌤"
-
-  if([45,48].includes(code))
-    return "🌫"
-
-  if(code >= 51 && code <= 82)
-    return "🌧"
-
-  if(code >= 95)
-    return "⛈"
-
-  return "🌤"
-
 }
 
 onMounted(() => {

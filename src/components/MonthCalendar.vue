@@ -72,6 +72,10 @@ import {
   ref,
   watch
 } from "vue"
+import {
+  dailyWeatherForDate,
+  weatherIcon
+} from "../utils/weather"
 
 const props = defineProps({
 
@@ -87,7 +91,8 @@ const props = defineProps({
 })
 
 const emit = defineEmits([
-  "update:selectedDate"
+  "update:selectedDate",
+  "visible-range"
 ])
 
 const monthName = computed(() =>
@@ -135,6 +140,12 @@ watch(
   { immediate:true }
 )
 
+watch(
+  visibleStart,
+  start => emitVisibleRange(start),
+  { immediate:true }
+)
+
 function keepSelectedDateVisible(date){
 
   const selected = startOfDay(date)
@@ -152,6 +163,15 @@ function keepSelectedDateVisible(date){
       -28
     )
   }
+
+}
+
+function emitVisibleRange(start){
+
+  emit("visible-range", {
+    start:new Date(start),
+    end:addDays(start, 35)
+  })
 
 }
 
@@ -219,66 +239,10 @@ function isToday(date){
 
 function weatherForDay(date){
 
-  if(!props.forecast?.daily)
-    return null
-
-  const dateString =
-    date.toLocaleDateString("sv-SE")
-
-  const index =
-    props.forecast.daily.time.findIndex(
-      d=>d===dateString
-    )
-
-  if(index===-1)
-    return null
-
-  return{
-
-    max:props.forecast.daily.temperature_2m_max[index],
-
-    min:props.forecast.daily.temperature_2m_min[index],
-
-    rain:props.forecast.daily.precipitation_probability_max[index],
-
-    wind:props.forecast.daily.wind_speed_10m_max[index],
-
-    code:props.forecast.daily.weather_code[index]
-
-  }
-
-}
-
-function weatherIcon(code){
-
-  if([0,1].includes(code))
-    return "☀️"
-
-  if(code === 2)
-    return "🌤"
-
-  if(code === 3)
-    return "☁️"
-
-  if([45,48].includes(code))
-    return "🌫"
-
-  if(code >= 51 && code <= 67)
-    return "🌧"
-
-  if(code >= 71 && code <= 77)
-    return "❄️"
-
-  if(code >= 80 && code <= 82)
-    return "🌦"
-
-  if(code >= 85 && code <= 86)
-    return "🌨"
-
-  if(code >= 95)
-    return "⛈"
-
-  return "🌤"
+  return dailyWeatherForDate(
+    props.forecast,
+    date
+  )
 
 }
 

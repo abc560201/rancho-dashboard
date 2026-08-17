@@ -14,6 +14,7 @@
           :forecast="forecast"
           :selected-date="selectedDate"
           @update:selectedDate="updateSelectedDate"
+          @visible-range="ensureEventsForRange"
         />
       </section>
 
@@ -125,6 +126,8 @@ const selectedEventIndex = ref(0)
 const eventDetail = ref(null)
 const forecast = ref(null)
 const events = ref([])
+const loadedEventRanges = ref([])
+const pendingEventRangeKeys = new Set()
 const historyKey = "quinta-arcangeles-dashboard"
 const panels = [
     "calendar",
@@ -573,6 +576,144 @@ function eventMatchesDate(event, selectedKey){
 
 }
 
+function calendarRangeForDate(date){
+
+    const start = startOfWeek(date)
+
+    return {
+        start,
+        end:addDays(start, 35)
+    }
+
+}
+
+async function ensureEventsForRange(range){
+
+    if(!range?.start || !range?.end)
+        return
+
+    const start = startOfDay(range.start)
+    const end = startOfDay(range.end)
+
+    if(start >= end || rangeIsCovered(start, end))
+        return
+
+    const key = eventRangeKey(start, end)
+
+    if(pendingEventRangeKeys.has(key))
+        return
+
+    pendingEventRangeKeys.add(key)
+
+    try{
+
+        const rawEvents = await getCalendarEvents(start, end)
+
+        mergeEvents(
+            parseEvents(rawEvents)
+        )
+
+        loadedEventRanges.value = [
+            ...loadedEventRanges.value,
+            {
+                start,
+                end
+            }
+        ]
+
+    }catch(err){
+
+        console.error(err)
+
+    }finally{
+
+        pendingEventRangeKeys.delete(key)
+
+    }
+
+}
+
+function mergeEvents(nextEvents){
+
+    const indexedEvents = new Map()
+
+    for(const event of events.value)
+        indexedEvents.set(event.id, event)
+
+    for(const event of nextEvents)
+        indexedEvents.set(event.id, event)
+
+    events.value = Array.from(indexedEvents.values())
+        .sort((a, b) => eventStartTime(a) - eventStartTime(b))
+
+}
+
+function rangeIsCovered(start, end){
+
+    return loadedEventRanges.value.some(
+        range => range.start <= start && range.end >= end
+    )
+
+}
+
+function eventRangeKey(start, end){
+
+    return `${dateKey(start)}:${dateKey(end)}`
+
+}
+
+function eventStartTime(event){
+
+    const start =
+        event.raw.start.dateTime ||
+        event.raw.start.date
+
+    if(!start)
+        return 0
+
+    const value = start.includes("T")
+        ? start
+        : `${start}T00:00:00`
+
+    return new Date(value).getTime()
+
+}
+
+function startOfWeek(date){
+
+    const start = startOfDay(date)
+    const weekday = start.getDay()
+
+    start.setDate(
+        start.getDate() - weekday
+    )
+
+    return start
+
+}
+
+function startOfDay(date){
+
+    const day = new Date(date)
+
+    day.setHours(0,0,0,0)
+
+    return day
+
+}
+
+function addDays(date, days){
+
+    const next = new Date(date)
+
+    next.setDate(
+        next.getDate() + days
+    )
+
+    return next
+
+}
+
 function formatEventRange(event){
 
     const start =
@@ -671,29 +812,9 @@ async function loadDashboard(){
 
     const today = new Date()
 
-    const start = new Date(
-      today.getFullYear(),
-      today.getMonth(),
-      1
+    ensureEventsForRange(
+        calendarRangeForDate(today)
     )
-
-    const end = new Date(
-      today.getFullYear(),
-      today.getMonth() + 1,
-      1
-    )
-
-  try{
-
-    const rawEvents = await getCalendarEvents(start, end)
-    events.value = parseEvents(rawEvents)
-
-  }catch(err){
-
-    console.error(err)
-    events.value = []
-
-  }
 
   try{
 

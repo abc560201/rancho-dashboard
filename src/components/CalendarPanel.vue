@@ -35,6 +35,7 @@
       :forecast="props.forecast"
       :selected-date="props.selectedDate"
       @update:selectedDate="$emit('update:selectedDate',$event)"
+      @visible-range="$emit('visible-range',$event)"
     />
   </section>
 </template>
@@ -64,7 +65,8 @@ const props = defineProps({
 })
 
 defineEmits([
-  "update:selectedDate"
+  "update:selectedDate",
+  "visible-range"
 ])
 
 const dayEvents = computed(() => {

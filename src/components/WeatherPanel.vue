@@ -29,22 +29,22 @@
       </div>
 
       <div
-        v-if="isToday && props.forecast?.current"
+        v-if="isToday && currentTemperature !== null"
         class="current-weather"
       >
         <span>Ahora</span>
-        <strong>{{ Math.round(props.forecast.current.temperature_2m) }} °C</strong>
+        <strong>{{ currentTemperature }} °C</strong>
       </div>
 
       <div class="weather-metrics">
         <div>
           <span>💧 Lluvia</span>
-          <strong>{{ selectedWeather.rain ?? 0 }}%</strong>
+          <strong>{{ formatPercent(selectedWeather.rain) }}</strong>
         </div>
 
         <div>
           <span>🌬 Viento</span>
-          <strong>{{ Math.round(selectedWeather.wind ?? 0) }} km/h</strong>
+          <strong>{{ formatSpeed(selectedWeather.wind) }}</strong>
         </div>
       </div>
     </div>
@@ -60,6 +60,10 @@
 
 <script setup>
 import { computed } from "vue"
+import {
+  dailyWeatherForDate,
+  weatherCodeLabel
+} from "../utils/weather"
 
 const props = defineProps({
   focused:Boolean,
@@ -71,30 +75,12 @@ const props = defineProps({
   }
 })
 
-const selectedWeather = computed(() => {
-
-  if(!props.forecast?.daily)
-    return null
-
-  const selectedKey =
-    props.selectedDate.toLocaleDateString("sv-SE")
-  const index =
-    props.forecast.daily.time.findIndex(
-      day => day === selectedKey
-    )
-
-  if(index === -1)
-    return null
-
-  return {
-    max:props.forecast.daily.temperature_2m_max[index],
-    min:props.forecast.daily.temperature_2m_min[index],
-    rain:props.forecast.daily.precipitation_probability_max[index],
-    wind:props.forecast.daily.wind_speed_10m_max[index],
-    code:props.forecast.daily.weather_code[index]
-  }
-
-})
+const selectedWeather = computed(() =>
+  dailyWeatherForDate(
+    props.forecast,
+    props.selectedDate
+  )
+)
 
 const dateLabel = computed(() =>
   props.selectedDate.toLocaleDateString("es-MX", {
@@ -108,28 +94,30 @@ const isToday = computed(() =>
   props.selectedDate.toDateString() === new Date().toDateString()
 )
 
-function weatherCodeLabel(code){
+const currentTemperature = computed(() => {
 
-  const labels = {
-    0:"Despejado",
-    1:"Mayormente despejado",
-    2:"Parcialmente nublado",
-    3:"Nublado",
-    45:"Niebla",
-    48:"Niebla con escarcha",
-    51:"Llovizna ligera",
-    53:"Llovizna",
-    55:"Llovizna intensa",
-    61:"Lluvia ligera",
-    63:"Lluvia",
-    65:"Lluvia intensa",
-    80:"Chubascos ligeros",
-    81:"Chubascos",
-    82:"Chubascos fuertes",
-    95:"Tormenta"
-  }
+  const current =
+    props.forecast?.current?.temperature_2m
 
-  return labels[code] || "Pronóstico disponible"
+  return Number.isFinite(current)
+    ? Math.round(current)
+    : null
+
+})
+
+function formatPercent(value){
+
+  return Number.isFinite(value)
+    ? `${Math.round(value)}%`
+    : "--"
+
+}
+
+function formatSpeed(value){
+
+  return Number.isFinite(value)
+    ? `${Math.round(value)} km/h`
+    : "--"
 
 }
 </script>
