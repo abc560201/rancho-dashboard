@@ -499,8 +499,6 @@ function eventDescription(event){
 
 async function loadDashboard(){
 
-  try{
-
     const today = new Date()
 
     const start = new Date(
@@ -515,14 +513,26 @@ async function loadDashboard(){
       1
     )
 
+  try{
+
     const rawEvents = await getCalendarEvents(start, end)
     events.value = parseEvents(rawEvents)
+
+  }catch(err){
+
+    console.error(err)
+    events.value = []
+
+  }
+
+  try{
 
     forecast.value = await getForecast()
 
   }catch(err){
 
     console.error(err)
+    forecast.value = null
 
   }
 

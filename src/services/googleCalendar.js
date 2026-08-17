@@ -1,9 +1,11 @@
 const API_KEY = import.meta.env.VITE_GOOGLE_API_KEY
 const CALENDAR_ID = import.meta.env.VITE_CALENDAR_ID
-console.log("API_KEY:", import.meta.env.VITE_GOOGLE_API_KEY)
-console.log("CALENDAR_ID:", import.meta.env.VITE_CALENDAR_ID)
+
 export async function getCalendarEvents(startDate, endDate) {
 
+  if (!API_KEY || !CALENDAR_ID) {
+    throw new Error("Falta configurar Google Calendar.")
+  }
 
 const url =
   `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(CALENDAR_ID)}/events` +
@@ -24,18 +26,6 @@ const url =
   }
 
   const data = await response.json()
-  console.log("Eventos recibidos:", data.items.length)
 
-console.table(
-  data.items.map(e => ({
-    id: e.id,
-    summary: e.summary,
-    start: e.start.dateTime || e.start.date,
-    calendar: e.organizer?.displayName,
-    recurring: !!e.recurringEventId
-  }))
-)
-
-  console.log(url)
   return data.items
 }
