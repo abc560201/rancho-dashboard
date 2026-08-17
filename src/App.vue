@@ -50,7 +50,7 @@
     <div
       v-if="eventDetail"
       class="modal-backdrop"
-      @click.self="closeEventDetail"
+      @click.self="requestCloseEventDetail"
     >
       <article class="event-modal">
         <div class="modal-header">
@@ -63,7 +63,7 @@
             class="modal-close"
             type="button"
             aria-label="Cerrar detalle"
-            @click="closeEventDetail"
+            @click="requestCloseEventDetail"
           >
             ×
           </button>
@@ -125,6 +125,7 @@ const selectedEventIndex = ref(0)
 const eventDetail = ref(null)
 const forecast = ref(null)
 const events = ref([])
+const historyKey = "quinta-arcangeles-dashboard"
 const panels = [
     "calendar",
     "events",
@@ -194,8 +195,12 @@ function activateFocusedPanel(){
 
 function activatePanel(panel){
 
+    if(!panels.includes(panel) || panel === "calendar")
+        return
+
     focusPanel(panel)
     activePanel.value = panel
+    eventDetail.value = null
 
     if(panel === "events"){
         selectedEventIndex.value = boundedEventIndex(
@@ -203,11 +208,25 @@ function activatePanel(panel){
         )
     }
 
+    pushAppHistory({
+        view:"panel",
+        panel
+    })
+
 }
 
 function closeActivePanel(){
 
     activePanel.value = null
+
+}
+
+function requestCloseActivePanel(){
+
+    if(navigateBackInApp())
+        return
+
+    closeActivePanel()
 
 }
 
@@ -230,14 +249,33 @@ function openSelectedEventDetail(){
     const selectedEvent =
         selectedDateEvents.value[selectedEventIndex.value]
 
-    if(selectedEvent)
-        eventDetail.value = selectedEvent
+    if(!selectedEvent)
+        return
+
+    focusPanel("events")
+    activePanel.value = "events"
+    eventDetail.value = selectedEvent
+
+    pushAppHistory({
+        view:"event-detail",
+        panel:"events",
+        eventId:selectedEvent.id
+    })
 
 }
 
 function closeEventDetail(){
 
     eventDetail.value = null
+
+}
+
+function requestCloseEventDetail(){
+
+    if(navigateBackInApp())
+        return
+
+    closeEventDetail()
 
 }
 
@@ -277,6 +315,129 @@ function isBackKey(key){
 
 }
 
+function navigateBackInApp(){
+
+    if(!eventDetail.value && !activePanel.value)
+        return false
+
+    if(
+        window.history.state?.app === historyKey &&
+        window.history.state?.view !== "dashboard"
+    ){
+        window.history.back()
+        return true
+    }
+
+    if(eventDetail.value){
+        closeEventDetail()
+        return true
+    }
+
+    if(activePanel.value){
+        closeActivePanel()
+        return true
+    }
+
+    return false
+
+}
+
+function buildHistoryState(state){
+
+    return {
+        app:historyKey,
+        view:state.view,
+        panel:state.panel || null,
+        eventId:state.eventId || null
+    }
+
+}
+
+function pushAppHistory(state){
+
+    const nextState = buildHistoryState(state)
+    const currentState = window.history.state
+
+    if(
+        currentState?.app === historyKey &&
+        currentState.view === nextState.view &&
+        currentState.panel === nextState.panel &&
+        currentState.eventId === nextState.eventId
+    )
+        return
+
+    window.history.pushState(
+        nextState,
+        "",
+        window.location.href
+    )
+
+}
+
+function replaceAppHistory(state){
+
+    window.history.replaceState(
+        buildHistoryState(state),
+        "",
+        window.location.href
+    )
+
+}
+
+function applyHistoryState(state){
+
+    if(state?.app !== historyKey){
+        closeEventDetail()
+        closeActivePanel()
+        return
+    }
+
+    if(state.view === "dashboard"){
+        closeEventDetail()
+        closeActivePanel()
+        return
+    }
+
+    const panel =
+        panels.includes(state.panel) && state.panel !== "calendar"
+            ? state.panel
+            : "events"
+
+    focusPanel(panel)
+    activePanel.value = panel
+    closeEventDetail()
+
+    if(panel === "events")
+        selectedEventIndex.value = boundedEventIndex(
+            selectedEventIndex.value
+        )
+
+    if(state.view === "event-detail"){
+
+        const eventIndex =
+            selectedDateEvents.value.findIndex(
+                event => event.id === state.eventId
+            )
+
+        if(eventIndex >= 0)
+            selectedEventIndex.value = eventIndex
+
+        const selectedEvent =
+            selectedDateEvents.value[selectedEventIndex.value]
+
+        if(selectedEvent)
+            eventDetail.value = selectedEvent
+
+    }
+
+}
+
+function onHistoryChange(event){
+
+    applyHistoryState(event.state)
+
+}
+
 function onKey(e){
 
     let handled = true
@@ -284,7 +445,7 @@ function onKey(e){
     if(eventDetail.value){
 
         if(isBackKey(e.key))
-            closeEventDetail()
+            requestCloseEventDetail()
         else
             handled = false
 
@@ -298,7 +459,7 @@ function onKey(e){
     if(isBackKey(e.key)){
 
         if(activePanel.value)
-            closeActivePanel()
+            requestCloseActivePanel()
         else
             handled = false
 
@@ -548,11 +709,20 @@ watch(selectedDateEvents, () => {
 
 onMounted(() => {
 
+    replaceAppHistory({
+        view:"dashboard"
+    })
+
     loadDashboard()
 
     window.addEventListener(
         "keydown",
         onKey
+    )
+
+    window.addEventListener(
+        "popstate",
+        onHistoryChange
     )
 
 })
@@ -562,6 +732,11 @@ onUnmounted(()=>{
     window.removeEventListener(
         "keydown",
         onKey
+    )
+
+    window.removeEventListener(
+        "popstate",
+        onHistoryChange
     )
 
 })
