@@ -42,7 +42,7 @@
           </div>
 
           <div class="event-date">
-            {{ formatDate(event.raw.start.dateTime || event.raw.start.date) }}
+            {{ formatEventTimeForSelectedDay(event) }}
           </div>
         </div>
       </template>
@@ -89,10 +89,19 @@ const dayEvents = computed(() => {
     props.selectedDate.toLocaleDateString("sv-SE")
 
   return props.events.filter(
-    event => event.date === selectedKey
+    event => eventMatchesDate(event, selectedKey)
   )
 
 })
+
+function eventMatchesDate(event, selectedKey){
+
+  if(Array.isArray(event.dates))
+    return event.dates.includes(selectedKey)
+
+  return event.date === selectedKey
+
+}
 
 const dateLabel = computed(() =>
   props.selectedDate.toLocaleDateString("es-MX", {
@@ -127,21 +136,46 @@ watch(
   }
 )
 
-function formatDate(value) {
+function formatEventTimeForSelectedDay(event) {
 
-  const hasTime = value.includes("T")
+  const selectedKey =
+    props.selectedDate.toLocaleDateString("sv-SE")
+  const startValue =
+    event.raw.start.dateTime ||
+    event.raw.start.date
+  const endValue =
+    event.raw.end?.dateTime ||
+    event.raw.end?.date ||
+    startValue
+  const startKey =
+    event.date
+  const endKey =
+    event.endDate || event.date
+  const isAllDay =
+    !startValue.includes("T")
 
-  if (hasTime) {
+  if(isAllDay)
+    return event.dates?.length > 1
+      ? "Todo el día · varios días"
+      : "Todo el día"
 
-    return new Date(value).toLocaleString("es-MX", {
-      hour:"2-digit",
-      minute:"2-digit",
-      hour12:false
-    }) + " hs"
+  if(selectedKey === startKey)
+    return formatTime(startValue) + " hs"
 
-  }
+  if(selectedKey === endKey && endValue.includes("T"))
+    return "Termina " + formatTime(endValue) + " hs"
 
-  return "Todo el día"
+  return "Continúa"
+
+}
+
+function formatTime(value) {
+
+  return new Date(value).toLocaleTimeString("es-MX", {
+    hour:"2-digit",
+    minute:"2-digit",
+    hour12:false
+  })
 
 }
 </script>

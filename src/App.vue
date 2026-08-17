@@ -1,6 +1,6 @@
 <template>
   <div class="dashboard">
-    <Header />
+    <Header :forecast="forecast" />
 
     <main
       class="layout"
@@ -138,7 +138,7 @@ const selectedDateEvents = computed(() => {
     const selectedKey = dateKey(selectedDate.value)
 
     return events.value.filter(
-        event => event.date === selectedKey
+        event => eventMatchesDate(event, selectedKey)
     )
 
 })
@@ -561,6 +561,15 @@ function onKey(e){
 function dateKey(date){
 
     return date.toLocaleDateString("sv-SE")
+
+}
+
+function eventMatchesDate(event, selectedKey){
+
+    if(Array.isArray(event.dates))
+        return event.dates.includes(selectedKey)
+
+    return event.date === selectedKey
 
 }
 

@@ -73,10 +73,19 @@ const dayEvents = computed(() => {
     props.selectedDate.toLocaleDateString("sv-SE")
 
   return props.events.filter(
-    event => event.date === selectedKey
+    event => eventMatchesDate(event, selectedKey)
   )
 
 })
+
+function eventMatchesDate(event, selectedKey){
+
+  if(Array.isArray(event.dates))
+    return event.dates.includes(selectedKey)
+
+  return event.date === selectedKey
+
+}
 
 const monthLabel = computed(() =>
   props.selectedDate.toLocaleDateString("es-MX", {

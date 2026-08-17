@@ -23,6 +23,7 @@
         class="day"
         :class="{
           selected: date.toDateString() === props.selectedDate.toDateString(),
+          today: isToday(date),
           'other-month': date.getMonth() !== props.selectedDate.getMonth()
         }"
         @click="emit('update:selectedDate', date)"
@@ -97,7 +98,7 @@ const year = computed(() =>
 )
 
 const weekdays = [
-  "Lu","Ma","Mi","Ju","Vi","Sa","Do"
+  "Do","Lu","Ma","Mi","Ju","Vi","Sa"
 ]
 
 const visibleStart = ref(
@@ -155,7 +156,7 @@ function startOfWeek(date){
 
   const start = startOfDay(date)
   const weekday =
-    (start.getDay()+6)%7
+    start.getDay()
 
   start.setDate(
     start.getDate()-weekday
@@ -193,8 +194,23 @@ function eventsForDay(date){
     date.toLocaleDateString("sv-SE")
 
   return props.events.filter(
-    e=>e.date===dateString
+    event=>eventMatchesDate(event, dateString)
   )
+
+}
+
+function eventMatchesDate(event, selectedKey){
+
+  if(Array.isArray(event.dates))
+    return event.dates.includes(selectedKey)
+
+  return event.date === selectedKey
+
+}
+
+function isToday(date){
+
+  return date.toDateString() === new Date().toDateString()
 
 }
 
@@ -302,6 +318,13 @@ function weatherForDay(date){
 .day:hover{
 
   background:#404b5a;
+
+}
+
+.today{
+
+  background:#334251;
+  box-shadow:inset 0 0 0 2px rgba(120,219,145,.45);
 
 }
 
